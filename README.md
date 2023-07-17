@@ -1,5 +1,5 @@
-# Proximal-Methods
+#   Causal graphs for effect estimation
 
 目前关注方向
 
-代理变量做causal effect
+因果图做causal effect

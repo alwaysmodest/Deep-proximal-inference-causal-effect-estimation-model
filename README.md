@@ -1,4 +1,4 @@
-#   Causal graphs for effect estimation
+#   Proximal inference
 
 目前感兴趣方向
 

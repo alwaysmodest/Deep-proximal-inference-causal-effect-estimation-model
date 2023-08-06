@@ -1,5 +1,5 @@
 #   Proximal inference
 
-目前感兴趣方向
+毕业论文第三个工作
 
-因果图做causal effect，代理变量做causal effect
+代理变量做causal effect

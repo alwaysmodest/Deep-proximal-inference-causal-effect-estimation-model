@@ -1,4 +1,4 @@
-#   Proximal inference
+#   Deep proximal inference causal effect estimation model
 
 毕业论文第三个工作
 

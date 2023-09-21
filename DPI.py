@@ -5,7 +5,7 @@ from torch.optim import Adam, SGD
 import numpy as np
 from data.datasets import twin_datasets,ihdp_datasets,twin_datasets_csv,jobs_datasets
 from torch.utils.data import DataLoader
-from models.network import EmbddingNet_1,EmbddingNet_2,TNet,YNet,OutNet_1,OutNet_2
+from models.network import EmbddingNet_1,EmbddingNet_2,TNet,YNet,OutNet
 import argparse
 import random
 import itertools
@@ -34,7 +34,8 @@ def mainTwins(args):
     embedding_2 = EmbddingNet_2(args.input_dims,args.hid_dims, 40).to(device)
     tnet = TNet(args.input_dims,args.hid_dims, 1).to(device)
     ynet = YNet(41,args.hid_dims, 1).to(device)
-    optimizer_P = Adam(itertools.chain(embedding_1.parameters(),embedding_2.parameters(),tnet.parameters(),ynet.parameters()), lr=args.lr)
+    outnet = OutNet(1,args.hid_dims,1).to(device)
+    optimizer_P = Adam(itertools.chain(embedding_1.parameters(),embedding_2.parameters(),tnet.parameters(),ynet.parameters(),outnet.parameters()), lr=args.lr)
     min_pehe = 9999
     min_ate = 9999
     for epoch in range(args.epoch):
@@ -47,12 +48,13 @@ def mainTwins(args):
             x0 = embedding_1(train_x)
             x1 = embedding_2(train_x)
             pred_T = tnet(x1)
-            pred_Y = ynet(torch.cat((x0,train_t.unsqueeze(1)),dim=1))
+            Y_T= outnet(pred_T)
+            pred_Y = ynet(torch.cat((x0,pred_T),dim=1))
             # loss M
             loss_M=torch.mean(torch.pow(x0 - torch.mean(x0), 2))+torch.mean(torch.pow(x1 - torch.mean(x1), 2))
             # loss prediction
             loss_T= F.mse_loss(pred_T,train_t).to(device)
-            loss_y = F.mse_loss(pred_Y,train_y).to(device)
+            loss_y = F.mse_loss(pred_Y,train_y).to(device)+F.mse_loss(Y_T,train_y).to(device)
             # total loss
             loss_other = args.rescon * loss_y+10*loss_M+loss_T
             optimizer_P.zero_grad()
@@ -71,6 +73,7 @@ def mainTwins(args):
                 embedding_2.eval()
                 tnet.eval()
                 ynet.eval()
+                outnet.eval()
                 total_test_potential_y = torch.Tensor([]).to(device)
                 total_test_potential_y_hat = torch.Tensor([]).to(device)
                 total_test_y_hat = torch.Tensor([]).to(device)
@@ -85,8 +88,9 @@ def mainTwins(args):
                     test_x0=embedding_1(test_x)
                     test_x1=embedding_2(test_x)
                     test_T= tnet(test_x1)
-                    test_Y = ynet(torch.cat((test_x0,test_t.unsqueeze(1)),dim=1))
-                    test_potential_y_hat = torch.cat([test_T, test_Y], dim=-1)
+                    test_Y_T = outnet(test_T)
+                    test_Y = ynet(torch.cat((test_x0,test_T),dim=1))
+                    test_potential_y_hat = torch.cat([test_Y_T, test_Y], dim=-1)
                     total_test_potential_y = torch.cat([total_test_potential_y, test_potential_y_hat], dim=0)
                     total_test_y_hat = torch.cat([test_y, test_potential_y], dim=-1)
                     total_test_y = torch.cat([total_test_y, total_test_y_hat], dim=0)
@@ -105,6 +109,7 @@ def mainTwins(args):
                 embedding_2.train()
                 tnet.train()
                 ynet.train()
+                outnet.train()
         print("Test_PEHE:", min_pehe)
         print("Test_ATE:", min_ate)
 
